@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>خرائط شمر | استكشاف الأرض والكون</title>
+<style>
+:root{--bg:#050816;--panel:rgba(9,16,36,.82);--line:rgba(130,170,255,.22);--cyan:#72e6ff;--muted:#a9b7d4}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#eef5ff;font-family:Tahoma,Arial,sans-serif}
+#space{position:fixed;inset:0}canvas{display:block}
+.top{position:fixed;top:18px;right:20px;left:20px;display:flex;align-items:center;justify-content:space-between;pointer-events:none;z-index:3}
+.brand,.status{background:rgba(8,15,35,.72);border:1px solid var(--line);backdrop-filter:blur(14px);border-radius:15px;padding:11px 15px;pointer-events:auto}
+.brand strong{font-size:16px;letter-spacing:.3px}.brand small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.status{font-size:11px;color:#b8c8e6}
+.panel{position:fixed;z-index:3;top:92px;right:20px;width:265px;max-height:calc(100vh - 115px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;backdrop-filter:blur(16px);box-shadow:0 15px 50px #0006}
+h2{font-size:14px;margin:0 0 12px;color:#fff}.sub{font-size:11px;color:var(--muted);line-height:1.7}
+.search{width:100%;background:#101b38;border:1px solid var(--line);color:white;padding:10px 12px;border-radius:10px;outline:none;margin:8px 0 12px}
+.list{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.planet{border:1px solid var(--line);border-radius:10px;background:#111d3a;color:#dce8ff;padding:9px 7px;text-align:right;cursor:pointer;font-size:12px;transition:.2s}
+.planet:hover,.planet.active{border-color:var(--cyan);background:#18304b}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:7px;vertical-align:middle}
+.info{margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}
+.info h3{font-size:16px;margin:0 0 7px}.info p{font-size:11px;line-height:1.8;color:var(--muted);margin:0}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.metric{background:#101b38;border-radius:9px;padding:8px}.metric b{display:block;font-size:12px;color:var(--cyan)}.metric span{font-size:10px;color:var(--muted)}
+.bottom{position:fixed;z-index:3;bottom:18px;right:20px;left:20px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;pointer-events:none}
+.control{pointer-events:auto;background:rgba(8,15,35,.82);border:1px solid var(--line);border-radius:12px;padding:9px 12px;color:#eaf4ff;font-size:11px;backdrop-filter:blur(12px)}
+button.control{cursor:pointer}button.control:hover{border-color:var(--cyan)}
+input[type=range]{width:100px;vertical-align:middle;accent-color:var(--cyan)}
+.hint{position:fixed;z-index:2;bottom:75px;left:20px;color:#9aabc9;font-size:10px;background:#081026a8;padding:8px 11px;border-radius:9px}
+#loading{position:fixed;inset:0;display:grid;place-items:center;background:#050816;z-index:10;transition:opacity .6s}
+.loader{text-align:center;color:#dcecff}.loader .orb{width:48px;height:48px;border:2px solid #27456b;border-top-color:var(--cyan);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:700px){.panel{top:auto;bottom:75px;right:10px;left:10px;width:auto;max-height:38vh;padding:12px}.top{top:10px;right:10px;left:10px}.brand{padding:9px 11px}.status{display:none}.bottom{bottom:10px;right:8px;left:8px}.hint{display:none}.list{grid-template-columns:repeat(4,1fr)}.planet{font-size:10px;padding:8px 4px}}
+</style>
+</head>
+<body>
+<div id="space"></div>
+<div id="loading"><div class="loader"><div class="orb"></div><div>جارٍ تجهيز الكون ثلاثي الأبعاد...</div></div></div>
+<header class="top">
+ <div class="brand"><strong>✦ خرائط شمر</strong><small>منصة استكشاف الأرض والكون ثلاثية الأبعاد</small></div>
+ <div class="status">عرض تجريبي تفاعلي · النظام الشمسي</div>
+</header>
+<aside class="panel">
+ <h2>وجهات الاستكشاف</h2>
+ <div class="sub">اختر جرمًا سماويًا للانتقال إليه واستكشافه.</div>
+ <input id="search" class="search" placeholder="ابحث عن كوكب..." autocomplete="off">
+ <div class="list" id="planetList"></div>
+ <div class="info" id="info">
+  <h3>الشمس</h3><p>مركز نظامنا الشمسي ونجم يمد الكواكب بالضوء والحرارة.</p>
+  <div class="metrics"><div class="metric"><b>1.39 مليون كم</b><span>القطر التقريبي</span></div><div class="metric"><b>G2V</b><span>التصنيف النجمي</span></div></div>
+ </div>
+</aside>
+<div class="hint">اسحب لتدوير المشهد · عجلة الفأرة للتقريب · انقر على كوكب لاختياره</div>
+<div class="bottom">
+ <button class="control" id="home">⌂ العودة للشمس</button>
+ <button class="control" id="pause">Ⅱ إيقاف الحركة</button>
+ <button class="control" id="orbits">◎ المدارات: تشغيل</button>
+ <label class="control">سرعة الزمن <input id="speed" type="range" min="0" max="4" step=".1" value="1"></label>
+ <button class="control" id="labels">تسميات: تشغيل</button>
+ <button class="control" id="cityMode">🏙️ استكشاف المدن ثلاثي الأبعاد</button>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const host=document.getElementById('space');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x050816);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,3000);camera.position.set(0,85,155);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;host.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.045;controls.minDistance=2.8;controls.maxDistance=650;
+scene.add(new THREE.AmbientLight(0x9aafd8,.65));
+const sunLight=new THREE.PointLight(0xffffff,1800,1000,1.4);scene.add(sunLight);
+const starGeo=new THREE.BufferGeometry(), starCount=6500, starPos=new Float32Array(starCount*3);
+for(let i=0;i<starCount;i++){const r=900*Math.random()+250,theta=Math.random()*Math.PI*2,phi=Math.acos(2*Math.random()-1);starPos[i*3]=r*Math.sin(phi)*Math.cos(theta);starPos[i*3+1]=r*Math.cos(phi);starPos[i*3+2]=r*Math.sin(phi)*Math.sin(theta)}
+starGeo.setAttribute('position',new THREE.BufferAttribute(starPos,3));const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xc8dcff,size:1.15,sizeAttenuation:true}));scene.add(stars);
+const sunMat=new THREE.MeshBasicMaterial({color:0xffc45a});
+const sun=new THREE.Mesh(new THREE.SphereGeometry(7,64,64),sunMat);scene.add(sun);
+const glow=new THREE.Mesh(new THREE.SphereGeometry(9,48,48),new THREE.MeshBasicMaterial({color:0xff9c38,transparent:true,opacity:.12,side:THREE.BackSide}));sun.add(glow);
+const planetData=[
+{name:'عطارد',en:'Mercury',r:1.25,d:13,color:0x9b948c,desc:'أقرب الكواكب إلى الشمس، صغير وصخري وسريع الدوران حولها.',period:'88 يومًا',diam:'4,879 كم'},
+{name:'الزهرة',en:'Venus',r:2.15,d:19,color:0xd9ad76,desc:'عالم شديد الحرارة تحيط به سحب كثيفة من ثاني أكسيد الكربون.',period:'225 يومًا',diam:'12,104 كم'},
+{name:'الأرض',en:'Earth',r:2.35,d:27,color:0x368bd8,desc:'كوكبنا موطن المحيطات والحياة. استكشف القارات والمحيطات وشاهد مواقع مدن مثل إسطنبول والقاهرة ولندن ونيويورك.',period:'365 يومًا',diam:'12,742 كم'},
+{name:'المريخ',en:'Mars',r:1.75,d:36,color:0xc65b3c,desc:'الكوكب الأحمر، يضم براكين ضخمة وآثارًا جيولوجية لمياه قديمة.',period:'687 يومًا',diam:'6,779 كم'},
+{name:'المشتري',en:'Jupiter',r:5.2,d:54,color:0xc99d72,desc:'أكبر كواكب المجموعة الشمسية، عملاق غازي بعواصف هائلة.',period:'11.86 سنة',diam:'139,820 كم'},
+{name:'زحل',en:'Saturn',r:4.4,d:76,color:0xd9c18d,desc:'عملاق غازي مشهور بحلقاته الواسعة المكونة من الجليد والصخور.',period:'29.4 سنة',diam:'116,460 كم'},
+{name:'أورانوس',en:'Uranus',r:3.2,d:98,color:0x82d7d8,desc:'عملاق جليدي أزرق مخضر، يدور بمحور مائل بشدة.',period:'84 سنة',diam:'50,724 كم'},
+{name:'نبتون',en:'Neptune',r:3.1,d:119,color:0x416de0,desc:'عالم أزرق بعيد وبارد، تهب فيه رياح فائقة السرعة.',period:'165 سنة',diam:'49,244 كم'}
+];
+const planetObjects=[];const orbitLines=[];const labelSprites=[];
+function makeLabel(text){const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');x.font='bold 26px Tahoma';x.textAlign='center';x.fillStyle='#e9f6ff';x.shadowColor='#000';x.shadowBlur=8;x.fillText(text,128,40);const t=new THREE.CanvasTexture(c);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false}));s.scale.set(12,3,1);return s}
+planetData.forEach((p,i)=>{
+ const pivot=new THREE.Group();scene.add(pivot);
+ const mat=new THREE.MeshStandardMaterial({color:p.color,roughness:.82,metalness:.02});
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(p.r,48,48),mat);mesh.position.x=p.d;pivot.add(mesh);
+ if(p.en==='Saturn'){const ring=new THREE.Mesh(new THREE.RingGeometry(p.r*1.35,p.r*2.15,96),new THREE.MeshStandardMaterial({color:0xc8b58d,side:THREE.DoubleSide,transparent:true,opacity:.72,roughness:1}));ring.rotation.x=Math.PI/2.25;mesh.add(ring)}
+ if(p.en==='Earth'){
+   const clouds=loader.load('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
+   const cloud=new THREE.Mesh(new THREE.SphereGeometry(p.r*1.012,64,64),new THREE.MeshStandardMaterial({map:clouds,transparent:true,opacity:.24,depthWrite:false}));
+   mesh.add(cloud);
+   const cities=[
+     {n:'إسطنبول',lat:41.01,lon:28.97},{n:'القاهرة',lat:30.04,lon:31.24},
+     {n:'لندن',lat:51.51,lon:-.13},{n:'نيويورك',lat:40.71,lon:-74.01},
+     {n:'طوكيو',lat:35.68,lon:139.69},{n:'ريو دي جانيرو',lat:-22.91,lon:-43.17},
+     {n:'سيدني',lat:-33.87,lon:151.21},{n:'كيب تاون',lat:-33.92,lon:18.42}
+   ];
+   const cityMat=new THREE.MeshBasicMaterial({color:0x73efff});
+   cities.forEach(c=>{
+     const lat=THREE.MathUtils.degToRad(c.lat),lon=THREE.MathUtils.degToRad(c.lon);
+     const v=new THREE.Vector3(-Math.cos(lat)*Math.cos(lon),Math.sin(lat),Math.cos(lat)*Math.sin(lon)).multiplyScalar(p.r*1.018);
+     const pin=new THREE.Mesh(new THREE.SphereGeometry(.055,10,10),cityMat);pin.position.copy(v);mesh.add(pin);
+   });
+   // نموذج مدينة إجرائي خفيف: شوارع ومبانٍ ثلاثية الأبعاد على سطح الأرض.
+   const cityGroup=new THREE.Group();cityGroup.name='procedural-city-district';
+   const istLat=THREE.MathUtils.degToRad(41.01),istLon=THREE.MathUtils.degToRad(28.97);
+   const cityNormal=new THREE.Vector3(-Math.cos(istLat)*Math.cos(istLon),Math.sin(istLat),Math.cos(istLat)*Math.sin(istLon)).normalize();
+   cityGroup.position.copy(cityNormal).multiplyScalar(p.r*1.012);
+   cityGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),cityNormal);
+   const district=new THREE.Group();cityGroup.add(district);
+   const roadMat=new THREE.MeshStandardMaterial({color:0x202b38,roughness:1});
+   const buildingMats=[0x52677a,0x788b9a,0x394d60,0x9a9b91].map(color=>new THREE.MeshStandardMaterial({color,roughness:.9}));
+   district.add(new THREE.Mesh(new THREE.BoxGeometry(1.75,.009,.13),roadMat));
+   const crossRoad=new THREE.Mesh(new THREE.BoxGeometry(.13,.01,1.75),roadMat);district.add(crossRoad);
+   for(let gx=-4;gx<=4;gx++) for(let gz=-4;gz<=4;gz++){
+     if(gx%3===0 || gz%3===0) continue;
+     const w=.10+Math.random()*.065,dep=.10+Math.random()*.065,height=.055+Math.random()*.19;
+     const building=new THREE.Mesh(new THREE.BoxGeometry(w,height,dep),buildingMats[Math.floor(Math.random()*buildingMats.length)]);
+     building.position.set(gx*.18,height/2+.012,gz*.18);district.add(building);
+     if(Math.random()>.5){
+       const roof=new THREE.Mesh(new THREE.BoxGeometry(w*.45,.012,dep*.45),new THREE.MeshBasicMaterial({color:0xffd98a}));
+       roof.position.set(building.position.x,height+.02,building.position.z);district.add(roof);
+     }
+   }
+   cityGroup.visible=false;mesh.add(cityGroup);
+   mesh.userData.cityGroup=cityGroup;mesh.userData.cityNormal=cityNormal;
+ }
+ const label=makeLabel(p.name);label.position.set(p.d,p.r+3.7,0);pivot.add(label);labelSprites.push(label);
+ const pts=[];for(let j=0;j<=240;j++){const a=j/240*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*p.d,0,Math.sin(a)*p.d))}
+ const line=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x47638f,transparent:true,opacity:.42}));scene.add(line);orbitLines.push(line);
+ planetObjects.push({data:p,pivot,mesh,label,angle:i*.6});
+});
+function focus(obj){selected=obj;document.querySelectorAll('.planet').forEach(b=>b.classList.toggle('active',b.dataset.name===obj.data.en));const p=obj.data;document.getElementById('info').innerHTML=`<h3>${p.name}</h3><p>${p.desc}</p><div class="metrics"><div class="metric"><b>${p.diam}</b><span>القطر التقريبي</span></div><div class="metric"><b>${p.period}</b><span>مدة السنة</span></div></div>`;target.copy(obj.mesh.getWorldPosition(new THREE.Vector3()));}
+let selected=null;const target=new THREE.Vector3();let paused=false,showOrbits=true,showLabels=true,speed=1;
+const list=document.getElementById('planetList');
+const colors=['#9b948c','#d9ad76','#368bd8','#c65b3c','#c99d72','#d9c18d','#82d7d8','#416de0'];
+function addButton(p,i){const b=document.createElement('button');b.className='planet';b.dataset.name=p.en;b.innerHTML=`<span class="dot" style="background:${colors[i]}"></span>${p.name}`;b.onclick=()=>focus(planetObjects[i]);list.appendChild(b)}
+planetData.forEach(addButton);
+document.getElementById('search').addEventListener('input',e=>{const q=e.target.value.trim();[...list.children].forEach(b=>b.style.display=b.textContent.includes(q)?'':'none')});
+document.getElementById('home').onclick=()=>{selected=null;target.set(0,0,0);document.getElementById('info').innerHTML='<h3>الشمس</h3><p>مركز نظامنا الشمسي ونجم يمد الكواكب بالضوء والحرارة.</p><div class="metrics"><div class="metric"><b>1.39 مليون كم</b><span>القطر التقريبي</span></div><div class="metric"><b>G2V</b><span>التصنيف النجمي</span></div></div>';document.querySelectorAll('.planet').forEach(b=>b.classList.remove('active'))};
+document.getElementById('pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'▶ استئناف الحركة':'Ⅱ إيقاف الحركة'};
+document.getElementById('orbits').onclick=e=>{showOrbits=!showOrbits;orbitLines.forEach(x=>x.visible=showOrbits);e.target.textContent='◎ المدارات: '+(showOrbits?'تشغيل':'إيقاف')};
+document.getElementById('labels').onclick=e=>{showLabels=!showLabels;labelSprites.forEach(x=>x.visible=showLabels);e.target.textContent='تسميات: '+(showLabels?'تشغيل':'إيقاف')};
+let cityMode=false;
+document.getElementById('cityMode').onclick=e=>{
+ const earth=planetObjects.find(o=>o.data.en==='Earth');
+ if(!earth)return;
+ cityMode=!cityMode;
+ earth.mesh.userData.cityGroup.visible=cityMode;
+ if(cityMode){
+   const worldPos=earth.mesh.localToWorld(earth.mesh.userData.cityGroup.position.clone());
+   const normal=earth.mesh.userData.cityNormal.clone().applyQuaternion(earth.mesh.getWorldQuaternion(new THREE.Quaternion()));
+   target.copy(worldPos);
+   camera.position.copy(worldPos.clone().add(normal.multiplyScalar(3.2)));
+   controls.minDistance=1.05;
+   e.target.textContent='🌐 العودة إلى عرض الأرض';
+ }else{
+   controls.minDistance=2.8;
+   target.copy(earth.mesh.getWorldPosition(new THREE.Vector3()));
+   camera.position.copy(target.clone().add(new THREE.Vector3(0,3.8,7.2)));
+   e.target.textContent='🏙️ استكشاف المدن ثلاثي الأبعاد';
+ }
+};
+document.getElementById('speed').oninput=e=>speed=Number(e.target.value);
+const raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2();
+renderer.domElement.addEventListener('click',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;raycaster.setFromCamera(mouse,camera);const hits=raycaster.intersectObjects(planetObjects.map(o=>o.mesh));if(hits.length){const o=planetObjects.find(x=>x.mesh===hits[0].object);if(o)focus(o)}});
+let last=performance.now();
+function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.05);last=now;if(!paused){planetObjects.forEach((o,i)=>{o.angle+=dt*speed*(.22/(1+i*.5));o.pivot.rotation.y=o.angle;o.mesh.rotation.y+=dt*speed*.25})}controls.target.lerp(target,.035);controls.update();renderer.render(scene,camera)}
+requestAnimationFrame(animate);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+setTimeout(()=>{const l=document.getElementById('loading');l.style.opacity=0;setTimeout(()=>l.remove(),700)},900);
+</script>
+</body>
+</html>
